@@ -10,7 +10,7 @@ class Config:
     LANGCHAIN_PROJECT = os.getenv("LANGCHAIN_PROJECT", "devdocs-navigator")
     
     # Model Configuration
-    MODEL_NAME = "gemini-3-flash-preview"
+    MODEL_NAME = "gemini-1.5-flash"
     EMBEDDING_MODEL = "all-MiniLM-L6-v2"
     
     # Vector Store Paths

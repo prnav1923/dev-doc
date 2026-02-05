@@ -74,6 +74,21 @@ streamlit run app.py
 3.  **Persistence**:
     *   The next time you run the app, the Knowledge Base will be ready instantly. You only need to run ingestion again if you want to update the documentation.
 
+## 🧪 Evaluation (LLM-as-a-Judge)
+
+The project includes a built-in evaluation pipeline using **LangSmith** and **Gemini** to test the RAG system's accuracy.
+
+1.  **Seed Ground Truth Data**:
+    ```bash
+    python src/manage_dataset.py
+    ```
+    This creates a dataset `devdocs-qa-dataset` in LangSmith with 10 sample Q&A pairs.
+
+2.  **Run Evaluation**:
+    *   In the Streamlit App Sidebar, click **"Run LangSmith Evaluation"**.
+    *   The system will compare the RAG's answers against the ground truth using an LLM to grade correctness.
+    *   View results in the [LangSmith Datasets](https://smith.langchain.com/datasets) dashboard.
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to verify the `feature/initial-setup` branch or open a Pull Request.

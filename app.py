@@ -47,6 +47,17 @@ with st.sidebar:
             except Exception as e:
                 st.error(f"Error during ingestion: {e}")
 
+    st.header("Evaluation")
+    if st.button("Run LangSmith Evaluation"):
+        with st.spinner("Running evaluation against ground truth dataset..."):
+            try:
+                from src.evaluation import run_evaluation
+                results = run_evaluation()
+                st.success("Evaluation Complete!")
+                st.markdown(f"View details in [LangSmith Datasets](https://smith.langchain.com/datasets)")
+            except Exception as e:
+                st.error(f"Evaluation failed: {e}")
+
 # Chat Interface
 if "messages" not in st.session_state:
     st.session_state.messages = []
