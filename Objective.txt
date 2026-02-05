@@ -1,0 +1,25 @@
+PROJECT 1: DevDocs Navigator
+AI-Powered Documentation Assistant with LLM Evaluation
+Problem Statement:
+Gen AI and ML engineers waste 2-3 hours/week searching through LangChain, LlamaIndex, and Pandas documentation. DevDocs Navigator reduces lookup time by 70% using agentic retrieval and LLM-based answer validation.
+What You'll Build:
+* Agentic RAG system using LangGraph for intelligent document retrieval
+* LLM-as-judge evaluation framework using LangSmith
+* Multi-library support (LangChain, LlamaIndex, Pandas docs)
+* Real-time answer validation and accuracy scoring
+* Streamlit UI with evaluation dashboards
+Tech Stack:
+* Gen AI: LangChain, LangGraph, LangSmith, Gemini
+* Vector DB: FAISS
+* Frontend: Streamlit
+* MLOps: Docker, GitHub Actions CI/CD
+* Cloud: AWS EC2 or GCP Cloud Run
+* Monitoring: LangSmith tracing + custom logging
+Key Features:
+✅ Agentic decision-making (when to retrieve vs generate) ✅ LLM-as-judge for answer quality evaluation ✅ Source citation with links to official docs ✅ Benchmark results (95%+ accuracy on 50 test questions) ✅ Deployed with Docker + CI/CD pipeline
+Skills Demonstrated:
+* Gen AI (RAG, agents, LLM evaluation)
+* LangChain ecosystem mastery
+* Production deployment
+* Docker & CI/CD
+* Cloud deployment
