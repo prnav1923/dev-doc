@@ -1,0 +1,12 @@
+langchain
+langgraph
+langsmith
+streamlit
+faiss-cpu
+google-generativeai
+beautifulsoup4
+tiktoken
+pandas
+python-dotenv
+sh
+langchain-google-genai

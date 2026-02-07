@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+.devdoc/
+venv/
+.venv/
+env/
+
+# Environment Variables
+.env
+
+# Vector Store (local data)
+faiss_index/
+
+# OS X
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/
