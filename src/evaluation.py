@@ -38,34 +38,79 @@ def correctness_evaluator(run, example) -> dict:
     reference = example.outputs["answer"]
     question = example.inputs["question"]
 
-    # Simple LLM-as-a-Judge prompt
-    prompt = f"""You are an expert technical documentation grader.
+    # Chain-of-Thought Prompt for Correctness
+    prompt = f"""You are a strict technical document grader.
     
     Question: {question}
     Ground Truth Answer: {reference}
     Student Answer: {prediction}
-
-    Grade the Student Answer based on the Ground Truth. 
-    It doesn't need to be word-for-word, but must cover the key technical points.
     
-    Return a score between 0 and 1, where 1 is correct and 0 is incorrect.
-    Also provide a brief reasoning.
+    Evaluate the Student Answer based on the Ground Truth.
     
-    Format output as:
-    Score: [0-1]
-    Reason: [Text]
+    Steps:
+    1. Identify key facts in the Ground Truth.
+    2. Check if the Student Answer contains these facts.
+    3. Check if the Student Answer contains hallucinations or info not in Ground Truth (if strict).
+    4. Provide a reasoning for the score.
+    
+    Score 1.0 if the answer is fully correct and complete.
+    Score 0.5 if key facts are missing but the answer is partially correct.
+    Score 0.0 if the answer is wrong or irrelevant.
+    
+    Output strictly in this format:
+    Score: [0.0 - 1.0]
+    Reason: [Concise explanation]
     """
     
-    response = eval_llm.invoke([HumanMessage(content=prompt)]).content
-    
-    # Simple parsing (robustness could be improved with structured output)
     try:
+        response = eval_llm.invoke([HumanMessage(content=prompt)]).content
+        
         import re
         score_match = re.search(r"Score:\s*([0-9.]+)", response)
         score = float(score_match.group(1)) if score_match else 0.0
-        return {"key": "correctness", "score": score, "comment": response}
+        
+        # Extract Reason
+        reason_match = re.search(r"Reason:\s*(.+)", response, re.DOTALL)
+        reason = reason_match.group(1).strip() if reason_match else response
+        
+        return {"key": "correctness", "score": score, "comment": reason}
+    except Exception as e:
+        return {"key": "correctness", "score": 0.0, "comment": f"Error resolving grade: {e}"}
+
+def faithfulness_evaluator(run, example) -> dict:
+    """
+    Check if the answer is grounded in the provided context (avoiding hallucinations).
+    """
+    prediction = run.outputs["output"]
+    context = run.outputs["context"]
+    
+    if not context:
+        return {"key": "faithfulness", "score": 0.0, "comment": "No context provided."}
+        
+    prompt = f"""You are a faithfulness checker.
+    
+    Context: {context}
+    Answer: {prediction}
+    
+    Is the Answer fully supported by the Context?
+    If the answer says "I don't know", score it 1.0 (it is faithful to its lack of knowledge).
+    If the answer mentions facts not in context, score 0.0.
+    
+    Output strictly:
+    Score: [0.0 or 1.0]
+    Reason: [Explanation]
+    """
+    
+    try:
+        response = eval_llm.invoke([HumanMessage(content=prompt)]).content
+        
+        import re
+        score_match = re.search(r"Score:\s*([0-9.]+)", response)
+        score = float(score_match.group(1)) if score_match else 0.0
+        
+        return {"key": "faithfulness", "score": score, "comment": response}
     except:
-        return {"key": "correctness", "score": 0.0, "comment": f"Failed to parse grade: {response}"}
+        return {"key": "faithfulness", "score": 0.0, "comment": "Error parsing faithfulness"}
 
 def run_evaluation(dataset_name: str = "devdocs-qa-dataset"):
     """
@@ -76,9 +121,9 @@ def run_evaluation(dataset_name: str = "devdocs-qa-dataset"):
     experiment_results = evaluate(
         target,
         data=dataset_name,
-        evaluators=[correctness_evaluator],
+        evaluators=[correctness_evaluator, faithfulness_evaluator],
         experiment_prefix="devdocs-eval",
-        metadata={"version": "1.0", "embedding_model": Config.EMBEDDING_MODEL},
+        metadata={"version": "1.1", "embedding_model": Config.EMBEDDING_MODEL},
         max_concurrency=1
     )
     

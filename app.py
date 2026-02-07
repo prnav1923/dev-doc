@@ -36,8 +36,7 @@ with st.sidebar:
                 # Use sample URLs for now, in real app might allow user input or broader crawl
                 sample_urls = [
                    "https://python.langchain.com/docs/introduction/", 
-                   "https://docs.llamaindex.ai/en/stable/",
-                   "https://pandas.pydata.org/docs/user_guide/10min.html" 
+                   "https://langchain-ai.github.io/langgraph/concepts/high_level/", # LangGraph Concepts
                 ]
                 docs = ingestion.load_urls(sample_urls)
                 splits = ingestion.process_documents(docs)
@@ -46,6 +45,57 @@ with st.sidebar:
                 st.rerun() # Refresh status
             except Exception as e:
                 st.error(f"Error during ingestion: {e}")
+
+    st.markdown("---")
+    st.subheader("Add Custom Data")
+    
+    # 1. Upload File
+    uploaded_files = st.file_uploader("Upload PDF or Text files", type=["pdf", "txt", "md"], accept_multiple_files=True)
+    if uploaded_files and st.button("Process Uploaded Files"):
+        with st.spinner("Processing files..."):
+            try:
+                import tempfile
+                ingestion = IngestionEngine()
+                all_docs = []
+                
+                # Create a temp directory to save uploaded files
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    for uploaded_file in uploaded_files:
+                        temp_path = os.path.join(temp_dir, uploaded_file.name)
+                        with open(temp_path, "wb") as f:
+                            f.write(uploaded_file.getbuffer())
+                        
+                        if uploaded_file.name.endswith(".pdf"):
+                            all_docs.extend(ingestion.load_pdf(temp_path))
+                        else:
+                            all_docs.extend(ingestion.load_text(temp_path))
+                    
+                    if all_docs:
+                        splits = ingestion.process_documents(all_docs)
+                        ingestion.create_vector_store(splits)
+                        st.success(f"Successfully ingested {len(all_docs)} documents ({len(splits)} chunks)!")
+                        st.rerun()
+                    else:
+                        st.warning("No valid content found in uploaded files.")
+            except Exception as e:
+                st.error(f"Error processing upload: {e}")
+
+    # 2. Demo Data
+    if st.button("Load Demo Data (Acme Corp Handbook)"):
+        with st.spinner("Loading Demo Data..."):
+            try:
+                ingestion = IngestionEngine()
+                data_path = os.path.join(Config.PROJECT_ROOT, "data")
+                docs = ingestion.load_directory(data_path)
+                if docs:
+                    splits = ingestion.process_documents(docs)
+                    ingestion.create_vector_store(splits)
+                    st.success(f"Successfully loaded Acme Corp Handbook ({len(splits)} chunks)!")
+                    st.rerun()
+                else:
+                    st.error("Demo data not found in 'data/' directory.")
+            except Exception as e:
+                st.error(f"Error loading demo data: {e}")
 
     st.header("Evaluation")
     if st.button("Run LangSmith Evaluation"):
@@ -62,6 +112,10 @@ with st.sidebar:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+if "thread_id" not in st.session_state:
+    import uuid
+    st.session_state.thread_id = str(uuid.uuid4())
+
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
@@ -75,7 +129,8 @@ if prompt := st.chat_input("How do I use LangGraph?"):
         with st.spinner("Thinking..."):
             try:
                 # Invoke the LangGraph app
-                config = {"configurable": {"thread_id": "1"}}
+                # Use the session-specific thread_id
+                config = {"configurable": {"thread_id": st.session_state.thread_id}}
                 result = rag_app.invoke(
                     {"question": prompt, "messages": [HumanMessage(content=prompt)]}, 
                     config=config

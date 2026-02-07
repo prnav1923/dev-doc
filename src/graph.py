@@ -100,5 +100,9 @@ workflow.set_entry_point("retrieve")
 workflow.add_edge("retrieve", "generate")
 workflow.add_edge("generate", END)
 
+# Checkpointer for Memory
+from langgraph.checkpoint.memory import MemorySaver
+memory = MemorySaver()
+
 # Compile
-app = workflow.compile()
+app = workflow.compile(checkpointer=memory)

@@ -48,25 +48,38 @@ examples = [
         "input": "What is the `GoogleGenerativeAIEmbeddings` class used for?",
         "output": "It is a LangChain wrapper for Google's embedding models (like embedding-001) to generate vector representations of text.",
     },
+    # Acme Corp Handbook Examples
+    {
+        "input": "What is the maximum expense allowance for a meal at Acme Corp?",
+        "output": "The meal allowance is $75 USD per day while traveling for business.",
+    },
+    {
+        "input": "Does Acme Corp allow international remote work?",
+        "output": "Yes, but it requires prior approval from HR and is limited to 30 days per calendar year.",
+    },
+    {
+        "input": "What is the Home Office Stipend amount?",
+        "output": "All full-time employees are eligible for a one-time Home Office Stipend of $1,500 USD upon joining.",
+    },
 ]
 
 def create_dataset():
     print(f"Checking for existing dataset: {dataset_name}...")
     if client.has_dataset(dataset_name=dataset_name):
-        print(f"Dataset {dataset_name} already exists.")
-        # Optional: could delete and recreate, but we'll just skip for safety
-    else:
-        print(f"Creating dataset: {dataset_name}")
-        dataset = client.create_dataset(dataset_name=dataset_name, description="QA pairs for DevDocs Navigator RAG Evaluation")
+        print(f"Dataset {dataset_name} already exists. Deleting to update...")
+        client.delete_dataset(dataset_name=dataset_name)
         
-        print("Adding examples to dataset...")
-        for example in examples:
-            client.create_example(
-                inputs={"question": example["input"]},
-                outputs={"answer": example["output"]},
-                dataset_id=dataset.id,
-            )
-        print("Dataset created successfully!")
+    print(f"Creating dataset: {dataset_name}")
+    dataset = client.create_dataset(dataset_name=dataset_name, description="QA pairs for DevDocs Navigator RAG Evaluation")
+        
+    print("Adding examples to dataset...")
+    for example in examples:
+        client.create_example(
+            inputs={"question": example["input"]},
+            outputs={"answer": example["output"]},
+            dataset_id=dataset.id,
+        )
+    print("Dataset created successfully!")
 
 if __name__ == "__main__":
     create_dataset()

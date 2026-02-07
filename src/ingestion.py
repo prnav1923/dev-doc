@@ -29,6 +29,42 @@ class IngestionEngine:
                 print(f"Error loading {url}: {e}")
         return docs
 
+    def load_pdf(self, file_path):
+        """Load a PDF file."""
+        from langchain_community.document_loaders import PyPDFLoader
+        try:
+            loader = PyPDFLoader(file_path)
+            return loader.load()
+        except Exception as e:
+            print(f"Error loading PDF {file_path}: {e}")
+            return []
+            
+    def load_text(self, file_path):
+        """Load a text/markdown file."""
+        from langchain_community.document_loaders import TextLoader
+        try:
+            loader = TextLoader(file_path)
+            return loader.load()
+        except Exception as e:
+            print(f"Error loading text {file_path}: {e}")
+            return []
+
+    def load_directory(self, directory_path):
+        """Load all supported files from a directory."""
+        docs = []
+        if not os.path.exists(directory_path):
+            print(f"Directory {directory_path} does not exist.")
+            return docs
+            
+        for root, _, files in os.walk(directory_path):
+            for file in files:
+                file_path = os.path.join(root, file)
+                if file.lower().endswith(".pdf"):
+                    docs.extend(self.load_pdf(file_path))
+                elif file.lower().endswith((".txt", ".md")):
+                    docs.extend(self.load_text(file_path))
+        return docs
+
     def process_documents(self, docs):
         """Split documents into chunks."""
         splits = self.text_splitter.split_documents(docs)
@@ -41,7 +77,12 @@ class IngestionEngine:
             return None
             
         vectorstore = None
-        batch_size = 2
+        batch_size = 5 # Increased slightly as local embeddings are fast, but FAISS might need care? 
+                       # Actually the rate limit was for embedding API if used, but we use local HuggingFace.
+                       # Wait, we use HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2") which is local.
+                       # The previous code had rate limit logic likely because the user MIGHT switch to OpenAI/Gemini embeddings.
+                       # I'll keep the logic but it's less critical for local embeddings.
+                       
         import time
 
         print(f"Ingesting {len(splits)} chunks in batches of {batch_size}...")
@@ -49,7 +90,7 @@ class IngestionEngine:
         # Simple loop without tqdm
         for i in range(0, len(splits), batch_size):
             batch = splits[i:i+batch_size]
-            retries = 5
+            retries = 3
             success = False
             for attempt in range(retries):
                 try:
@@ -59,13 +100,13 @@ class IngestionEngine:
                         new_vectorstore = FAISS.from_documents(documents=batch, embedding=self.embeddings)
                         vectorstore.merge_from(new_vectorstore)
                     
-                    # Rate limit buffer - start small
-                    time.sleep(5) 
+                    # Small buffer
+                    # time.sleep(0.5) 
                     success = True
                     break # Success, move to next batch
                 except Exception as e:
                     if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                        wait_time = (attempt + 1) * 30  # Slower backoff: 30s, 60s, 90s...
+                        wait_time = (attempt + 1) * 5
                         print(f"Rate limit hit on batch {i}. Retrying in {wait_time}s...")
                         time.sleep(wait_time)
                     else:
@@ -95,24 +136,27 @@ class IngestionEngine:
         return None
 
 if __name__ == "__main__":
-    # Test ingestion with some sample URLs
+    # Test ingestion
     ingestion = IngestionEngine()
     
-    # We will use some high-value representative pages for the demo
-    # In a real scenario, we might use RecursiveUrlLoader for full sections
+    # 1. Load URLs
+    print("Loading Web Docs...")
     sample_urls = [
-        "https://python.langchain.com/docs/get_started/introduction",
-        "https://docs.llamaindex.ai/en/stable/",
-        "https://pandas.pydata.org/docs/user_guide/index.html"
+         "https://python.langchain.com/docs/get_started/introduction",
     ]
+    web_docs = ingestion.load_urls(sample_urls)
     
-    print("Loading docs...")
-    docs = ingestion.load_urls(sample_urls)
-    print(f"Loaded {len(docs)} documents.")
+    # 2. Load Local Data (if exists)
+    print("Loading Local Data...")
+    local_docs = ingestion.load_directory("data")
     
-    print("Splitting docs...")
-    splits = ingestion.process_documents(docs)
-    print(f"Created {len(splits)} chunks.")
+    all_docs = web_docs + local_docs
+    print(f"Total Loaded {len(all_docs)} documents.")
     
-    print("Creating vector store...")
-    ingestion.create_vector_store(splits)
+    if all_docs:
+        print("Splitting docs...")
+        splits = ingestion.process_documents(all_docs)
+        print(f"Created {len(splits)} chunks.")
+        
+        print("Creating vector store...")
+        ingestion.create_vector_store(splits)
